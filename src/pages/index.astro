@@ -11,6 +11,119 @@
 		<title>Astro</title>
 	</head>
 	<body>
-		<h1>Astro</h1>
+
+		<div class="grid h-screen w-full grid-cols-[auto_1fr]">
+			<header class="h-full col-start-1 col-span-1 bg-slate-100 flex justify-center items-center px-5 py-5">
+				<h1 class="[writing-mode:vertical-lr] text-6xl font-extrabold text-white">Map Maker</h1>
+			</header>
+			<main class="col-span-1 col-start-2 place-self-center justify-self-center  bg-slate-50 flex justify-center">
+				<canvas class="border w-[800px] aspect-video place-self-center" id="canvas" data-resize="true" class="w-full h-full"></canvas>
+			</main>
+		</div>
 	</body>
 </html>
+
+
+<script>
+  import paper from "paper";
+  import { renderToAsyncIterable } from "astro/runtime/server/render/astro/render.js";
+  window.onload = setup;
+  function setup() {
+    paper.setup("canvas");
+    draw();
+  }
+  function draw() {
+    const map = new paper.Raster(
+      "https://res.cloudinary.com/makingthings/image/upload/v1709893751/texture_planet_earth_color_xbkkx1.jpg"
+    );
+	const { width, height } = map.size;
+	
+	const targetSize = {
+	  width: 60,
+	  height: 10,
+
+
+	}
+	map.crossOrigin = "anonymous";
+	// map.visible = false;
+    map.on("load", () => {
+    
+      
+	  const dimensions: Dimensions = {
+		imageWidth: width,
+		imageHeight: height,
+		targetWidth: targetSize.width,
+		targetHeight: targetSize.height,
+	  }
+  
+	  const scaledDimensions = scaleImage(dimensions);
+      
+      map.size = new paper.Size(scaledDimensions.width, scaledDimensions.height);
+      console.log("loaded");
+	  console.log(map.size);
+    });
+
+	const pxDimensions: pixelDimensions = {
+	gridSize:2,
+	spacing:1.5,
+	width: 100,
+	height: 50,
+	raster: map
+	}
+
+	pixalate(pxDimensions);
+	
+  }
+
+  function aspectRatio(width: number, height: number) {
+    return width / height;
+	
+  }
+
+  type Dimensions = {
+	imageWidth:number,
+	imageHeight:number,
+	targetWidth:number,
+	targetHeight:number
+  }
+  function scaleImage({imageWidth,imageHeight,targetWidth,targetHeight}:Dimensions):{width:number,height:number} {
+	const imageAspectRatio:number = aspectRatio(imageWidth,imageHeight);
+	const targetAspectRatio:number = aspectRatio(targetWidth,targetHeight);
+	let scaledWidth,scaledHeight
+	if( imageAspectRatio > targetAspectRatio ){
+		scaledHeight = targetHeight;
+		scaledWidth = Math.round(imageAspectRatio * targetHeight)
+  } else {
+	scaledWidth = targetWidth;
+	scaledHeight = Math.round(targetWidth / imageAspectRatio);	
+
+  }
+  return{
+	width:scaledWidth, height:scaledHeight
+  }
+  
+}
+
+type pixelDimensions = {
+	gridSize:number,
+	spacing:number,
+	width:number,
+	height:number,
+	raster:paper.Raster
+}
+
+function pixalate({gridSize,spacing, width, height, raster}:Pixalate){
+	for(let y = 0; y < height; y++){
+		for(let x = 0; x < width; x++){
+			const color = raster.getPixel(x,y);
+			const pixel = new paper.Path.Circle({
+				center: new paper.Point(x,y).multiply(gridSize),
+				radius: gridSize / 2 / spacing,
+				fillColor: new paper.Color('000000'),
+			})
+			console.log(color.gray);
+			pixel.scale(1 - color.gray);
+		}
+	}
+}
+</script>
