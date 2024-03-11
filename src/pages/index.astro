@@ -26,104 +26,66 @@
 
 <script>
   import paper from "paper";
-  import { renderToAsyncIterable } from "astro/runtime/server/render/astro/render.js";
+
+
   window.onload = setup;
   function setup() {
     paper.setup("canvas");
     draw();
   }
   function draw() {
-    const map = new paper.Raster(
-      "https://res.cloudinary.com/makingthings/image/upload/v1709893751/texture_planet_earth_color_xbkkx1.jpg"
-    );
-	const { width, height } = map.size;
-	
-	const targetSize = {
-	  width: 60,
-	  height: 10,
-
-
-	}
-	map.crossOrigin = "anonymous";
-	// map.visible = false;
-    map.on("load", () => {
-    
-      
-	  const dimensions: Dimensions = {
-		imageWidth: width,
-		imageHeight: height,
-		targetWidth: targetSize.width,
-		targetHeight: targetSize.height,
-	  }
-  
-	  const scaledDimensions = scaleImage(dimensions);
-      
-      map.size = new paper.Size(scaledDimensions.width, scaledDimensions.height);
-      console.log("loaded");
-	  console.log(map.size);
+    const map = new paper.Raster({
+        crossOrigin: "anonymous",
+        source: "https://res.cloudinary.com/makingthings/image/upload/v1709893751/texture_planet_earth_color_xbkkx1.jpg"
     });
 
-	const pxDimensions: pixelDimensions = {
-	gridSize:2,
-	spacing:1.5,
-	width: 100,
-	height: 50,
-	raster: map
-	}
+    const gridSize = 3;
+    const spacing = 1.6;
+    
+    map.on('load', () => {
+        map.size = new paper.Size(300, 150);
+        const { width, height } = map.size;
+        
+        // Clear previous content before drawing
+        paper.project.activeLayer.removeChildren();
 
-	pixalate(pxDimensions);
-	
-  }
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const color = map.getPixel(x, y);
+                const pixel = new paper.Path.Circle({
+                    center: new paper.Point(x * gridSize, y * gridSize),
+                    radius: gridSize / 2 / spacing,
+                    fillColor: new paper.Color(color)
+                });
+                pixel.scale(1 - color.gray);
+            }
+        }
 
-  function aspectRatio(width: number, height: number) {
-    return width / height;
-	
-  }
+        const button = document.createElement('button');
+        button.classList.add('px-6', 'text-3xl', 'py-4', 'rounded', 'bg-sky-700', 'text-white');
+        button.textContent = 'Download';
+        document.body.appendChild(button);
 
-  type Dimensions = {
-	imageWidth:number,
-	imageHeight:number,
-	targetWidth:number,
-	targetHeight:number
-  }
-  function scaleImage({imageWidth,imageHeight,targetWidth,targetHeight}:Dimensions):{width:number,height:number} {
-	const imageAspectRatio:number = aspectRatio(imageWidth,imageHeight);
-	const targetAspectRatio:number = aspectRatio(targetWidth,targetHeight);
-	let scaledWidth,scaledHeight
-	if( imageAspectRatio > targetAspectRatio ){
-		scaledHeight = targetHeight;
-		scaledWidth = Math.round(imageAspectRatio * targetHeight)
-  } else {
-	scaledWidth = targetWidth;
-	scaledHeight = Math.round(targetWidth / imageAspectRatio);	
+        button.addEventListener('click', () => {
+            const svg = paper.project.exportSVG({
+                asString: true,
+                bounds: 'content',
+                embedImages: false
+            }) as string;
+            
+            const blob = new Blob([svg], {
+                type: 'image/svg+xml;charset=utf-8'
+            });
+            
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'map.svg';
+            a.click();
 
-  }
-  return{
-	width:scaledWidth, height:scaledHeight
-  }
-  
-}
+            URL.revokeObjectURL(a.href);
+        });
+    });
 
-type pixelDimensions = {
-	gridSize:number,
-	spacing:number,
-	width:number,
-	height:number,
-	raster:paper.Raster
-}
-
-function pixalate({gridSize,spacing, width, height, raster}:Pixalate){
-	for(let y = 0; y < height; y++){
-		for(let x = 0; x < width; x++){
-			const color = raster.getPixel(x,y);
-			const pixel = new paper.Path.Circle({
-				center: new paper.Point(x,y).multiply(gridSize),
-				radius: gridSize / 2 / spacing,
-				fillColor: new paper.Color('000000'),
-			})
-			console.log(color.gray);
-			pixel.scale(1 - color.gray);
-		}
-	}
+    paper.project.activeLayer.position = paper.view.center;
 }
 </script>
